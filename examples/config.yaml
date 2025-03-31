@@ -1,6 +1,6 @@
 data:
-  train_files: /data_nvme1n1/work/ljm/dataset/math12k@train
-  val_files: /data_nvme1n1/work/ljm/dataset/math12k@test
+  train_files: ../../dataset/math12k@train
+  val_files: ../../dataset/math12k@test
   prompt_key: problem
   answer_key: answer
   image_key: images
@@ -29,7 +29,7 @@ worker:
     padding_free: true
     ulysses_sequence_parallel_size: 1
     model:
-      model_path: /data_nvme1n1/work/ljm/model/Qwen/Qwen2.5-7B-Instruct
+      model_path: ../../model/Qwen/Qwen2.5-7B-Instruct
       enable_gradient_checkpointing: true
       trust_remote_code: false
       freeze_vision_tower: false
