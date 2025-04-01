@@ -29,7 +29,7 @@ worker:
     padding_free: true
     ulysses_sequence_parallel_size: 1
     model:
-      model_path: /data_nvme3n1/model/Qwen/Qwen2.5-7B-Instruct
+      model_path: /data_nvme3n1/model/Qwen/QwQ-32B
       enable_gradient_checkpointing: true
       trust_remote_code: false
       freeze_vision_tower: false
@@ -70,7 +70,7 @@ trainer:
   total_episodes: 15
   logger: ["console", "wandb"]
   project_name: easy_r1
-  experiment_name: qwen2_5_7b_math
+  experiment_name: QwQ-32B-math12k
   n_gpus_per_node: 8
   nnodes: 2
   val_freq: 5
