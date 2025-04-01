@@ -11,7 +11,6 @@ SYSTEM_PROMPT="""You FIRST think about the reasoning process as an internal mono
 
 ray job submit --address="http://10.242.64.12:8265" \
     --runtime-env=examples/runtime_env.yaml \
-    --working-dir=examples \
     --no-wait \
     -- \
     python3 -m verl.trainer.main \
