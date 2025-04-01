@@ -51,7 +51,7 @@ worker:
     gpu_memory_utilization: 0.5
     enforce_eager: false
     enable_chunked_prefill: false
-    tensor_parallel_size: 2
+    tensor_parallel_size: 8
     limit_images: 0
 
   ref:
