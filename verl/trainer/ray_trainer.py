@@ -178,6 +178,12 @@ def compute_advantage(data: DataProto, adv_estimator: AdvantageEstimator, gamma=
         advantages, returns = core_algos.compute_grpo_outcome_advantage(
             token_level_rewards=token_level_rewards, eos_mask=response_mask, index=index
         )
+        print("="*50)
+        print(f"token_level_rewards:{token_level_rewards}")
+        print(f"responses:{responses}")
+        print(f"response_length:{response_length}")
+        print(f"advantages:{advantages}")
+        print("="*50)
         data.batch["advantages"] = advantages
         data.batch["returns"] = returns
     elif adv_estimator == AdvantageEstimator.REINFORCE_PLUS_PLUS:

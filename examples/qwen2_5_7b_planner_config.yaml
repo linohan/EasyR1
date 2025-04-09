@@ -64,7 +64,7 @@ worker:
 
   reward:
     reward_type: function
-    compute_score: math
+    compute_score: planner
 
 trainer:
   total_episodes: 15
