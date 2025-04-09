@@ -15,7 +15,7 @@ ray job submit --address="http://10.242.64.12:8265" \
     --no-wait \
     -- \
     python3 -m verl.trainer.main \
-        config=examples/qwen2_5_7b_planner_config.yaml \
+        config=examples/qwen2_5_7b_planner_config_multi_node.yaml \
         data.system_prompt="${SYSTEM_PROMPT}" \
         worker.actor.model.model_path=${MODEL_PATH} \
         trainer.n_gpus_per_node=8 \

@@ -10,7 +10,7 @@ SYSTEM_PROMPT="""You FIRST think about the reasoning process as an internal mono
  <think> reasoning process here </think> answer here"""
 
 python3 -m verl.trainer.main \
-    config=examples/config.yaml \
+    config=examples/qwen2_5_7b_planner_config.yaml \
     data.system_prompt="${SYSTEM_PROMPT}" \
     worker.actor.model.model_path=${MODEL_PATH} \
     trainer.n_gpus_per_node=8
