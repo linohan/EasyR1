@@ -311,6 +311,10 @@ class RayPPOTrainer:
             min_pixels=self.config.data.min_pixels,
             max_pixels=self.config.data.max_pixels,
         )
+        print("="*100)
+        print("训练样本示例:")
+        print(self.train_dataset.__getitem__(0))
+        print("="*100)
         # use sampler for better ckpt resume
         if self.config.data.shuffle:
             train_dataloader_generator = torch.Generator()
