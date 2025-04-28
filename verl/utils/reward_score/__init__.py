@@ -15,7 +15,7 @@
 
 from .math import math_compute_score
 from .r1v import r1v_compute_score
-from .planner import planner_compute_score
+from .planner_one_json import planner_compute_score, planner_compute_score_val
 
 
-__all__ = ["math_compute_score", "r1v_compute_score", "planner_compute_score"]
+__all__ = ["math_compute_score", "r1v_compute_score", "planner_compute_score", "planner_compute_score_val"]

@@ -76,33 +76,38 @@ def json_parser(s):
         return json_parsed
 
 
-def extract_thinking_content(content):
-    return content.split("</think>")[0]
-
-
-def extract_answer_content(content):
-    return content.split("</think>")[-1]
-
-
 def parse_answer(content):
     """Parse answer to reason and answer"""
-    reason_parsed = ""
     answer_parsed = {}
     try:
-        reason_parsed = extract_thinking_content(content)
-        answer_parsed = json_parser(extract_answer_content(content))
+        answer_parsed = json_parser(content)
     except:
         answer_parsed = {}
-    return reason_parsed, answer_parsed
+    return answer_parsed
 
+def remove_fields(data, fields_to_remove):
+    """
+    params:
+        data: dict, 待删除字段的数据
+        fields_to_remove: list, 要删除的字段列表
+    递归地删除dict中所有的fields_to_remove字段。
+    注意，会修改原data，所以请传入deepcopy
+    """
+    if isinstance(data, dict):
+        for key in fields_to_remove:
+            if key in data:
+                del data[key]
+        for key in data:
+            remove_fields(data[key], fields_to_remove)
+    elif isinstance(data, list):
+        for item in data:
+            remove_fields(item, fields_to_remove)
 
 def remove_redundant_keys(obj):
     obj_c = copy.deepcopy(obj)
     obj_c = json_parser(obj_c) if isinstance(obj_c, str) else obj_c
-    redundant_keys = ["forReason"]
-    for key in redundant_keys:
-        if key in obj_c:
-            del obj_c[key]
+    redundant_keys = ["Thought", "forReason"]
+    remove_fields(obj_c, redundant_keys)
     return obj_c
 
 

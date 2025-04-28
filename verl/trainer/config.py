@@ -74,6 +74,7 @@ class TrainerConfig:
     val_before_train: bool = True
     val_only: bool = False
     val_generations_to_log: int = 1
+    val_compute_score: str = "math"
     save_freq: int = -1
     remove_previous_ckpt: bool = False
     remove_ckpt_after_load: bool = False
