@@ -67,6 +67,7 @@ class CustomRewardManager:
                 print("[prompt]", prompt_str)
                 print("[response]", response_str)
                 print("[ground_truth]", ground_truth)
+                print("[score_func]", self.compute_score)
                 print("[score]", score)
 
         return reward_tensor

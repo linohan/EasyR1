@@ -85,6 +85,7 @@ def parse_answer(content):
         answer_parsed = {}
     return answer_parsed
 
+
 def remove_fields(data, fields_to_remove):
     """
     params:
@@ -102,6 +103,7 @@ def remove_fields(data, fields_to_remove):
     elif isinstance(data, list):
         for item in data:
             remove_fields(item, fields_to_remove)
+
 
 def remove_redundant_keys(obj):
     obj_c = copy.deepcopy(obj)

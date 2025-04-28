@@ -72,6 +72,7 @@ def main_task(config: PPOConfig):
         tokenizer=tokenizer, num_examine=1, compute_score=config.trainer.val_compute_score
     )
     print("="*50)
+    print(f"reward_fn:{config.worker.reward.compute_score}")
     print(f"val_reward_fn:{config.trainer.val_compute_score}")
     print("="*50)
 
