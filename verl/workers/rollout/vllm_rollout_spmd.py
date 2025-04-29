@@ -11,15 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-The vllm_rollout that can be applied in different backend
-When working with FSDP:
-- Use DTensor weight loader (recommended) or HF weight loader
-- Utilize state_dict from the FSDP to synchronize the weights among tp ranks in vLLM
-"""
 
+import os
 from contextlib import contextmanager
-from typing import Any, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import torch
@@ -28,11 +23,12 @@ from tensordict import TensorDict
 from transformers import PreTrainedTokenizer
 from vllm import LLM, RequestOutput, SamplingParams
 
-from ....protocol import DataProto
-from ....utils import torch_functional as VF
-from ....utils.torch_dtypes import PrecisionType
-from ..base import BaseRollout
-from ..config import RolloutConfig
+from ...protocol import DataProto
+from ...utils import torch_functional as VF
+from ...utils.tokenizer import get_processor
+from ...utils.torch_dtypes import PrecisionType
+from .base import BaseRollout
+from .config import RolloutConfig
 
 
 def _repeat_interleave(value: Union[torch.Tensor, np.ndarray], repeats: int) -> Union[torch.Tensor, List[Any]]:
@@ -40,6 +36,15 @@ def _repeat_interleave(value: Union[torch.Tensor, np.ndarray], repeats: int) -> 
         return value.repeat_interleave(repeats, dim=0)
     else:
         return np.repeat(value, repeats, axis=0)
+
+
+def _get_logit_bias(model_path: str, trust_remote_code: bool) -> Optional[Dict[int, float]]:
+    processor = get_processor(model_path, trust_remote_code=trust_remote_code)
+    if processor is not None and hasattr(processor, "image_token"):
+        image_token_id = processor.tokenizer.convert_tokens_to_ids(processor.image_token)
+        return {image_token_id: -100}
+    else:
+        return None
 
 
 class vLLMRollout(BaseRollout):
@@ -52,42 +57,44 @@ class vLLMRollout(BaseRollout):
             tokenizer: the task/model tokenizer
         """
         super().__init__()
+        self.rank = int(os.getenv("RANK", "0"))
         self.config = config
         self.pad_token_id = tokenizer.pad_token_id
         if config.tensor_parallel_size > torch.distributed.get_world_size():
             raise ValueError("Tensor parallelism size should be less than world size.")
 
-        if not config.enforce_eager and config.free_cache_engine:
-            raise ValueError("CUDA graph should be disabled when `free_cache_engine` is True.")
-
         if config.max_num_batched_tokens < config.prompt_length + config.response_length:
             raise ValueError("max_num_batched_tokens should be greater than prompt_length + response_length.")
-
-        vllm_init_kwargs = {}
-        if config.limit_images > 0:
-            vllm_init_kwargs = {"limit_mm_per_prompt": {"image": config.limit_images}}
 
         self.inference_engine = LLM(
             model=model_path,
             skip_tokenizer_init=False,
-            tensor_parallel_size=config.tensor_parallel_size,
+            trust_remote_code=config.trust_remote_code,
+            load_format="dummy",
             dtype=PrecisionType.to_str(PrecisionType.to_dtype(config.dtype)),
-            gpu_memory_utilization=config.gpu_memory_utilization,
-            enforce_eager=config.enforce_eager,
-            max_model_len=config.prompt_length + config.response_length,
-            max_num_batched_tokens=config.max_num_batched_tokens,
-            enable_sleep_mode=True,
+            seed=config.seed,
+            max_model_len=config.max_model_len or config.prompt_length + config.response_length,
             distributed_executor_backend="external_launcher",
-            disable_custom_all_reduce=True,
+            tensor_parallel_size=config.tensor_parallel_size,
+            gpu_memory_utilization=config.gpu_memory_utilization,
+            max_num_batched_tokens=config.max_num_batched_tokens,
             disable_log_stats=config.disable_log_stats,
+            enforce_eager=config.enforce_eager,
+            disable_custom_all_reduce=True,
+            limit_mm_per_prompt={"image": config.limit_images} if config.limit_images > 0 else None,
+            disable_mm_preprocessor_cache=True,
             enable_chunked_prefill=config.enable_chunked_prefill,
-            **vllm_init_kwargs,
+            enable_sleep_mode=True,
         )
 
         # Offload vllm model to reduce peak memory usage
         self.inference_engine.sleep(level=1)
 
-        sampling_kwargs = {"max_tokens": config.response_length, "detokenize": False}
+        sampling_kwargs = {
+            "max_tokens": config.response_length,
+            "detokenize": False,
+            "logit_bias": _get_logit_bias(model_path, trust_remote_code=config.trust_remote_code),
+        }
         default_sampling_params = SamplingParams()
         for key in config.to_dict().keys():
             if hasattr(default_sampling_params, key):
@@ -113,23 +120,13 @@ class vLLMRollout(BaseRollout):
             setattr(self.sampling_params, key, value)
 
     @torch.no_grad()
-    def generate_sequences(self, prompts: DataProto, **kwargs) -> DataProto:
+    def generate_sequences(self, prompts: DataProto) -> DataProto:
         # left-padded attention_mask
         input_ids: torch.Tensor = prompts.batch["input_ids"]  # (bs, prompt_length)
         attention_mask: torch.Tensor = prompts.batch["attention_mask"]
         position_ids: torch.Tensor = prompts.batch["position_ids"]
         eos_token_id: int = prompts.meta_info["eos_token_id"]
         batch_size = input_ids.size(0)
-
-        do_sample = prompts.meta_info.get("do_sample", True)
-        if not do_sample:
-            kwargs = {
-                "n": 1,
-                "temperature": 0.0,
-                "top_p": 1.0,
-                "top_k": -1,
-                "min_p": 0.0,
-            }
 
         non_tensor_batch = prompts.non_tensor_batch
         if batch_size != len(non_tensor_batch["raw_prompt_ids"]):
@@ -140,36 +137,27 @@ class vLLMRollout(BaseRollout):
             for raw_prompt_ids, multi_modal_data in zip(
                 non_tensor_batch.pop("raw_prompt_ids"), non_tensor_batch.pop("multi_modal_data")
             ):
-                vllm_inputs.append({"prompt_token_ids": raw_prompt_ids, "multi_modal_data": multi_modal_data})
+                vllm_inputs.append({"prompt_token_ids": list(raw_prompt_ids), "multi_modal_data": multi_modal_data})
         else:
             vllm_inputs = [
-                {"prompt_token_ids": raw_prompt_ids} for raw_prompt_ids in non_tensor_batch.pop("raw_prompt_ids")
+                {"prompt_token_ids": list(raw_prompt_ids)} for raw_prompt_ids in non_tensor_batch.pop("raw_prompt_ids")
             ]
 
         # users can customize different sampling_params at different run
-        with self.update_sampling_params(**kwargs):
+        with self.update_sampling_params(**prompts.meta_info):
             completions: List[RequestOutput] = self.inference_engine.generate(
-                prompts=vllm_inputs, sampling_params=self.sampling_params
+                prompts=vllm_inputs, sampling_params=self.sampling_params, use_tqdm=(self.rank == 0)
             )
+            response_ids = [output.token_ids for completion in completions for output in completion.outputs]
+            response_ids = VF.pad_2d_list_to_length(
+                response_ids, self.pad_token_id, max_length=self.config.response_length
+            ).to(input_ids.device)
 
-        response_ids = []
-        for completion in completions:
-            for output in completion.outputs:
-                response_ids.append(output.token_ids)
-
-        response_ids = VF.pad_2d_list_to_length(
-            response_ids, self.pad_token_id, max_length=self.config.response_length
-        ).to(input_ids.device)
-
-        if self.config.n > 1 and do_sample:
-            batch_size = batch_size * self.config.n
-            input_ids = _repeat_interleave(input_ids, self.config.n)
-            attention_mask = _repeat_interleave(attention_mask, self.config.n)
-            position_ids = _repeat_interleave(position_ids, self.config.n)
-            if "multi_modal_inputs" in non_tensor_batch.keys():
-                non_tensor_batch["multi_modal_inputs"] = _repeat_interleave(
-                    non_tensor_batch["multi_modal_inputs"], self.config.n
-                )
+            if self.sampling_params.n > 1:
+                batch_size = batch_size * self.sampling_params.n
+                input_ids = _repeat_interleave(input_ids, self.sampling_params.n)
+                attention_mask = _repeat_interleave(attention_mask, self.sampling_params.n)
+                position_ids = _repeat_interleave(position_ids, self.sampling_params.n)
 
         sequence_ids = torch.cat([input_ids, response_ids], dim=-1)
         response_length = response_ids.size(1)
@@ -183,10 +171,10 @@ class vLLMRollout(BaseRollout):
         # position_ids:   [0,0,0,0,0,1,2,3 | 4,5,6,7,8,9,10,11]
         response_position_ids = position_ids[..., -1:] + delta_position_id
         position_ids = torch.cat([position_ids, response_position_ids], dim=-1)
-        response_attention_mask = VF.get_eos_mask(
-            response_ids=response_ids, eos_token=eos_token_id, dtype=attention_mask.dtype
+        response_mask = VF.get_response_mask(
+            response_ids=response_ids, eos_token_id=eos_token_id, dtype=attention_mask.dtype
         )
-        attention_mask = torch.cat((attention_mask, response_attention_mask), dim=-1)
+        attention_mask = torch.cat((attention_mask, response_mask), dim=-1)
 
         # all the tp ranks should contain the same data here. data in all ranks are valid
         batch = TensorDict(
@@ -195,6 +183,7 @@ class vLLMRollout(BaseRollout):
                 "responses": response_ids,
                 "input_ids": sequence_ids,  # here input_ids become the whole sentences
                 "attention_mask": attention_mask,
+                "response_mask": response_mask,
                 "position_ids": position_ids,
             },
             batch_size=batch_size,
