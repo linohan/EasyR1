@@ -86,7 +86,6 @@ class TrainerConfig:
     val_before_train: bool = True
     val_only: bool = False
     val_generations_to_log: int = 0
-    val_compute_score: str = "math"
     save_freq: int = -1
     save_limit: int = -1
     save_checkpoint_path: Optional[str] = None
