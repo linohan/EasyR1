@@ -3,6 +3,7 @@ from verl.utils.reward_score.planner_utils_one_json import *
 # from planner_utils_one_json import *
 import json
 import numpy as np
+from typing import Dict, List
 
 
 def planner_format_reward(predict_str: str) -> float:
@@ -63,8 +64,26 @@ def planner_compute_score(predict_str: str, ground_truth: str) -> float:
            1.0 * planner_length_reward(predict_str, opt_length=25, opt_length_penalty=0.05)
 
 
-def planner_compute_score_val(predict_str: str, ground_truth: str) -> float:
-    return planner_acc_reward(predict_str, ground_truth)
+def compute_score(predicts: List[str], ground_truths: List[str], format_weight: float = 0.1) -> List[Dict[str, float]]:
+    scores = []
+    for predict, ground_truth in zip(predicts, ground_truths):
+        format_score = planner_format_reward(predict)
+        accuracy_score = planner_acc_reward(predict, ground_truth)
+        length_score = planner_length_reward(predict)
+        overall_score = 0.9 * accuracy_score + 0.1 * format_score + 1.0 * length_score
+
+        scores.append(
+            {
+                "overall": overall_score,
+                "format": format_score,
+                "accuracy": accuracy_score,
+            }
+        )
+
+    return scores
+
+# def planner_compute_score_val(predict_str: str, ground_truth: str) -> float:
+#     return planner_acc_reward(predict_str, ground_truth)
 
 
 if __name__ == "__main__":

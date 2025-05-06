@@ -76,10 +76,10 @@ class Runner:
 
         RemoteRewardManager = ray.remote(RewardManager).options(num_cpus=config.worker.reward.num_cpus)
         reward_fn = RemoteRewardManager.remote(config.worker.reward, tokenizer)
-        val_reward_fn = RemoteRewardManager.remote(config.worker.reward_val, tokenizer)
+        val_reward_fn = RemoteRewardManager.remote(config.worker.reward, tokenizer)
         print("="*50)
         print(f"reward_fn:{config.worker.reward}")
-        print(f"val_reward_fn:{config.worker.reward_val}")
+        print(f"val_reward_fn:{config.worker.reward}")
         print("="*50)
 
         train_dataloader, val_dataloader = create_dataloader(config.data, tokenizer, processor)

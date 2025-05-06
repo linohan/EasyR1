@@ -190,7 +190,7 @@ class RayPPOTrainer:
         self.hybrid_engine = config.worker.hybrid_engine
         print("="*100)
         print("训练样本示例:")
-        print(self.train_dataloader.__getitem__(0))
+        print(self.train_dataloader.dataset[0])
         print("="*100)
         if self.hybrid_engine:
             assert Role.ActorRollout in role_worker_mapping, (

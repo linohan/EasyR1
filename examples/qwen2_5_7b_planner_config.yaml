@@ -56,7 +56,7 @@ worker:
     gpu_memory_utilization: 0.6
     enforce_eager: false
     enable_chunked_prefill: false
-    tensor_parallel_size: 8
+    tensor_parallel_size: 4
     limit_images: 0
     val_override_config:
       temperature: 0.5
@@ -72,10 +72,7 @@ worker:
 
   reward:
     reward_type: sequential
-    reward_function: ./examples/reward_function/planner_one_json.py:planner_compute_score
-  reward_val:
-    reward_type: sequential
-    reward_function: ./examples/reward_function/planner_one_json.py:planner_compute_score_val
+    reward_function: ./examples/reward_function/planner_one_json.py:compute_score
 
 trainer:
   total_epochs: 15

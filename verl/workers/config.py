@@ -43,7 +43,6 @@ class WorkerConfig:
     critic: CriticConfig = field(default_factory=CriticConfig)
     ref: RefConfig = field(default_factory=RefConfig)
     reward: RewardConfig = field(default_factory=RewardConfig)
-    reward_val: RewardConfig = field(default_factory=RewardConfig)
     rollout: RolloutConfig = field(default_factory=RolloutConfig)
 
     def post_init(self):
