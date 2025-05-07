@@ -1,6 +1,6 @@
 import re
-from verl.utils.reward_score.planner_utils_one_json import *
-# from planner_utils_one_json import *
+# from verl.utils.reward_score.planner_utils_one_json import *
+from planner_utils_one_json import *
 import json
 import numpy as np
 from typing import Dict, List
@@ -52,37 +52,63 @@ def calc_length_penalty(cur_length: int, opt_length: int = 25, opt_length_penalt
     return max(penalty, -1.0)
 
 
-def planner_length_reward(predict_str: str, opt_length: int = 25, opt_length_penalty: float = 0.05) -> float:
+def planner_length_reward_optimal_length(predict_str: str, opt_length: int = 25, opt_length_penalty: float = 0.05) -> float:
+    """
+    指定最优长度和最优长度处的惩罚，构造惩罚曲线。
+    """
     thinking_content = parse_answer(predict_str).get("Thought", "")
     length = len(thinking_content)
     return calc_length_penalty(length, opt_length, opt_length_penalty)
 
+def planner_length_reward_kimi1_5(predict_str: str, ground_truth: str, min_length: int, max_length: int) -> float:
+    """Compute length-based rewards to discourage overthinking and promote token efficiency.
 
-def planner_compute_score(predict_str: str, ground_truth: str) -> float:
-    return 0.9 * planner_acc_reward(predict_str, ground_truth) + 0.1 * planner_format_reward(predict_str) + \
-           1.0 * planner_length_reward(predict_str, opt_length=25, opt_length_penalty=0.05)
+    Taken from from the Kimi 1.5 tech report: https://arxiv.org/abs/2501.12599
+
+
+    Returns:
+        List of rewards where:
+        - For correct answers: reward = 0.5 - (len - min_len)/(max_len - min_len)
+        - For incorrect answers: reward = min(0, 0.5 - (len - min_len)/(max_len - min_len))
+    """
+    if min_length == max_length:
+        return 0.0
+    thinking_content = parse_answer(predict_str).get("Thought", "")
+    length = len(thinking_content)
+    result_correctness = verify_ans(predict_str, ground_truth) >= 0.8
+    reward = 0.0
+    lambda_val = 0.5 - (length - min_length)/(max_length - min_length)
+    if result_correctness:
+        reward = lambda_val
+    else:
+        reward = min(0, lambda_val)
+    return reward
 
 
 def compute_score(predicts: List[str], ground_truths: List[str], format_weight: float = 0.1) -> List[Dict[str, float]]:
     scores = []
+    thought_lengths = []
+    for predict in predicts:
+        thought_content = parse_answer(predict).get("Thought", "")
+        thought_lengths.append(len(thought_content))
+    min_length = min(thought_lengths)
+    max_length = max(thought_lengths)
     for predict, ground_truth in zip(predicts, ground_truths):
         format_score = planner_format_reward(predict)
         accuracy_score = planner_acc_reward(predict, ground_truth)
-        length_score = planner_length_reward(predict)
-        overall_score = 0.9 * accuracy_score + 0.1 * format_score + 1.0 * length_score
+        length_score = planner_length_reward_kimi1_5(predict, ground_truth, min_length, max_length)
+        overall_score = 0.8 * accuracy_score + 0.1 * format_score + 0.1 * length_score
 
         scores.append(
             {
                 "overall": overall_score,
                 "format": format_score,
+                "length": length_score,
                 "accuracy": accuracy_score,
             }
         )
 
     return scores
-
-# def planner_compute_score_val(predict_str: str, ground_truth: str) -> float:
-#     return planner_acc_reward(predict_str, ground_truth)
 
 
 if __name__ == "__main__":
@@ -92,6 +118,12 @@ if __name__ == "__main__":
   "ActionInput": {
     "forReason": "客户要求人工客服处理"
   }
+}''','''{
+  "Thought": "转人工",
+  "Action": "MANUAL_SERVICE",
+  "ActionInput": {
+    "forReason": "客户要求人工客服处理"
+  }
 }''']
-    _ground_truth = ["{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}"]
-    print(f"planner_compute_score_val: {compute_score(_str, _ground_truth)}")
+    _ground_truth = ["{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}","{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}"]
+    print(f"compute_score: {compute_score(_str, _ground_truth)}")

@@ -31,6 +31,7 @@ class RewardScore(TypedDict):
     overall: float
     format: Optional[float]
     accuracy: Optional[float]
+    length: Optional[float]
 
 
 SequentialRewardFunction = Callable[[str, str], RewardScore]
