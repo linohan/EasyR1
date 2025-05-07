@@ -71,7 +71,7 @@ worker:
       offload_params: false
 
   reward:
-    reward_type: sequential
+    reward_type: batch
     reward_function: ./verl/utils/reward_score/planner_one_json.py:compute_score
 
 trainer:
