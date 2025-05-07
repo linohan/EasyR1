@@ -1,6 +1,6 @@
 import re
-from verl.utils.reward_score.planner_utils_one_json import *
-# from planner_utils_one_json import *
+# from verl.utils.reward_score.planner_utils_one_json import *
+from planner_utils_one_json import *
 import json
 import numpy as np
 from typing import Dict, List
@@ -87,16 +87,12 @@ def compute_score(predicts: List[str], ground_truths: List[str], format_weight: 
 
 
 if __name__ == "__main__":
-    _str = '''{
+    _str = ['''{
   "Thought": "客户要求转人工",
   "Action": "MANUAL_SERVICE",
   "ActionInput": {
     "forReason": "客户要求人工客服处理"
   }
-}'''
-    _ground_truth = "{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}"
-    print(f"length_reward: {planner_length_reward(_str, opt_length=25, opt_length_penalty=0.05)}")
-    print(f"acc_reward: {planner_acc_reward(_str, _ground_truth)}")
-    print(f"format_reward: {planner_format_reward(_str)}")
-    print(f"planner_compute_score: {planner_compute_score(_str, _ground_truth)}")
-    print(f"planner_compute_score_val: {planner_compute_score_val(_str, _ground_truth)}")
+}''']
+    _ground_truth = ["{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}"]
+    print(f"planner_compute_score_val: {compute_score(_str, _ground_truth)}")
