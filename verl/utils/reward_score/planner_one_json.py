@@ -59,7 +59,6 @@ def planner_length_reward(predict_str: str, opt_length: int = 25, opt_length_pen
 
 
 def planner_compute_score(predict_str: str, ground_truth: str) -> float:
-    # return 0.9 * planner_acc_reward(predict_str, ground_truth) + 0.1 * planner_format_reward(predict_str)
     return 0.9 * planner_acc_reward(predict_str, ground_truth) + 0.1 * planner_format_reward(predict_str) + \
            1.0 * planner_length_reward(predict_str, opt_length=25, opt_length_penalty=0.05)
 
