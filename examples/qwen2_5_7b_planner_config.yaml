@@ -72,7 +72,7 @@ worker:
 
   reward:
     reward_type: sequential
-    reward_function: ./examples/reward_function/planner_one_json.py:compute_score
+    reward_function: ./verl/utils/reward_score/planner_one_json.py:compute_score
 
 trainer:
   total_epochs: 15
