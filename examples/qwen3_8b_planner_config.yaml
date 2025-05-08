@@ -32,7 +32,7 @@ worker:
     padding_free: true
     ulysses_sequence_parallel_size: 1
     model:
-      model_path: /data_nvme3n1/model/Qwen/Qwen3-30B-A3B
+      model_path: /data_nvme3n1/model/Qwen/Qwen3-8B
       enable_gradient_checkpointing: true
       trust_remote_code: false
       freeze_vision_tower: false
@@ -75,7 +75,7 @@ worker:
     reward_function: ./verl/utils/reward_score/planner_one_json.py:compute_score
 
 trainer:
-  total_epochs: 15
+  total_epochs: 30
   max_steps: null
   project_name: easy_r1
   experiment_name: qwen3_8b_planner
