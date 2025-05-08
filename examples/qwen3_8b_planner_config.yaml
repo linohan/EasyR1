@@ -32,7 +32,7 @@ worker:
     padding_free: true
     ulysses_sequence_parallel_size: 1
     model:
-      model_path: /data_nvme3n1/model/Qwen/Qwen3-8B
+      model_path: /data_nvme3n1/model/Qwen/Qwen3-30B-A3B
       enable_gradient_checkpointing: true
       trust_remote_code: false
       freeze_vision_tower: false

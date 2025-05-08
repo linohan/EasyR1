@@ -7,14 +7,21 @@ data:
   max_prompt_length: 4096
   max_response_length: 2048
   rollout_batch_size: 512
+  val_batch_size: 1024
+  format_prompt: ./examples/format_prompt/planner_format.jinja
+  override_chat_template: "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0]['role'] == 'system' %}\n        {{- messages[0]['content'] }}\n    {%- else %}\n        {{- '你是在线旅行公司同程艺龙专职酒店业务的平台客服机器人，是人工客服的助手，你叫程小艺。' }}\n    {%- endif %}\n    {{- \"\\n\\n# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0]['role'] == 'system' %}\n        {{- '<|im_start|>system\\n' + messages[0]['content'] + '<|im_end|>\\n' }}\n    {%- else %}\n        {{- '<|im_start|>system\\n你是在线旅行公司同程艺龙专职酒店业务的平台客服机器人，是人工客服的助手，你叫程小艺。<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- for message in messages %}\n    {%- if (message.role == \"user\") or (message.role == \"system\" and not loop.first) or (message.role == \"assistant\" and not message.tool_calls) %}\n        {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {{- '<|im_start|>' + message.role }}\n        {%- if message.content %}\n            {{- '\\n' + message.content }}\n        {%- endif %}\n        {%- for tool_call in message.tool_calls %}\n            {%- if tool_call.function is defined %}\n                {%- set tool_call = tool_call.function %}\n            {%- endif %}\n            {{- '\\n<tool_call>\\n{\"name\": \"' }}\n            {{- tool_call.name }}\n            {{- '\", \"arguments\": ' }}\n            {{- tool_call.arguments | tojson }}\n            {{- '}\\n</tool_call>' }}\n        {%- endfor %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if (loop.index0 == 0) or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- message.content }}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n{%- endif %}\n"
   shuffle: true
   seed: 1
   max_pixels: 4194304
   min_pixels: 262144
+  filter_overlong_prompts: true
 
 algorithm:
   adv_estimator: grpo
-  kl_coef: 0.0
+  disable_kl: false
+  use_kl_loss: true
+  kl_penalty: low_var_kl
+  kl_coef: 1.0e-2
 
 worker:
   actor:
@@ -22,10 +29,6 @@ worker:
     micro_batch_size_per_device_for_update: 4
     micro_batch_size_per_device_for_experience: 16
     max_grad_norm: 1.0
-    entropy_coeff: 1.0e-3
-    use_kl_loss: true
-    kl_loss_coef: 1.0e-2
-    kl_loss_type: low_var_kl
     padding_free: true
     ulysses_sequence_parallel_size: 1
     model:
@@ -36,50 +39,54 @@ worker:
     optim:
       lr: 1.0e-6
       weight_decay: 1.0e-2
+      strategy: adamw  # {adamw, adamw_bf16}
       lr_warmup_ratio: 0.0
     fsdp:
       enable_full_shard: true
       enable_cpu_offload: false
       enable_rank0_init: true
     offload:
-      offload_params: true
-      offload_optimizer: true
+      offload_params: true  # true: more CPU memory; false: more GPU memory
+      offload_optimizer: true  # true: more CPU memory; false: more GPU memory
 
   rollout:
-    temperature: 1.0
     n: 5
-    gpu_memory_utilization: 0.5
+    temperature: 1.0
+    top_p: 0.99
+    gpu_memory_utilization: 0.6
     enforce_eager: false
     enable_chunked_prefill: false
     tensor_parallel_size: 4
     limit_images: 0
+    val_override_config:
+      temperature: 0.5
+      n: 1
 
   ref:
     fsdp:
       enable_full_shard: true
-      enable_cpu_offload: true
+      enable_cpu_offload: true  # true: more CPU memory; false: more GPU memory
       enable_rank0_init: true
     offload:
       offload_params: false
 
   reward:
-    reward_type: function
-    compute_score: planner
+    reward_type: batch
+    reward_function: ./verl/utils/reward_score/planner_one_json.py:compute_score
 
 trainer:
-  total_episodes: 15
-  logger: ["console", "wandb"]
+  total_epochs: 15
+  max_steps: null
   project_name: easy_r1
-  experiment_name: Qwen3-30B-A3B-planner
-  n_gpus_per_node: 8
+  experiment_name: qwen3_30b_a3b_planner
+  logger: ["console", "wandb"]
   nnodes: 1
-  val_freq: 5
+  n_gpus_per_node: 8
+  val_freq: 5  # -1 to disable
   val_before_train: true
   val_only: false
-  val_generations_to_log: 1
-  val_compute_score: planner_val
-  save_freq: 5
-  remove_previous_ckpt: false
-  remove_ckpt_after_load: false
+  val_generations_to_log: 3
+  save_freq: 5  # -1 to disable
+  save_limit: 3  # -1 to disable
   save_checkpoint_path: null
   load_checkpoint_path: null
