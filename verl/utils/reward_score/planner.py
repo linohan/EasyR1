@@ -6,15 +6,34 @@ import numpy as np
 from typing import Dict, List
 
 
+def parse_thinking_content(predict_str: str) -> dict:
+    """
+    解析 Thought 字段内容。
+    """
+    pattern = re.compile(r"<think>(.*?)</think>", re.DOTALL)
+    match = re.search(pattern, predict_str)
+    if match:
+        return {
+            "format_right": True,
+            "thought": match.group(1).strip()
+        }
+    return {
+        "format_right": False,
+        "thought": ""
+    }
+
 def planner_format_reward(predict_str: str) -> float:
     try:
+        thought_parsed = parse_thinking_content(predict_str)
+        format_right = thought_parsed["format_right"]
         # 尝试解析 JSON 字符串
         result = predict_str.split("</think>")[-1].strip()
         data = json.loads(result)
-        # 检查是否为字典类型且包含 Thought 字段
-        if isinstance(data, dict) and 'Thought' in data:
+        # 检查是否为字典类型且包含 Thought 内容
+        if isinstance(data, dict) and format_right:
             return 1.0
-        return 0.0
+        else:
+            return 0.0
     except json.JSONDecodeError:
         # 如果解析失败，说明不是有效的 JSON 字符串
         return 0.0
@@ -66,8 +85,9 @@ def planner_length_reward_optimal_length(predict_str: str, opt_length: int = 25,
     """
     指定最优长度和最优长度处的惩罚，构造惩罚曲线。
     """
-    thinking_content = parse_answer(predict_str).get("Thought", "")
-    length = len(thinking_content)
+    thought_parsed = parse_thinking_content(predict_str)
+    thought = thought_parsed["thought"]
+    length = len(thought)
     return calc_length_penalty(length, opt_length, opt_length_penalty)
 
 def planner_length_reward_kimi1_5(predict_str: str, ground_truth: str, min_length: int, max_length: int) -> float:
@@ -83,8 +103,9 @@ def planner_length_reward_kimi1_5(predict_str: str, ground_truth: str, min_lengt
     """
     if min_length == max_length:
         return 0.0
-    thinking_content = parse_answer(predict_str).get("Thought", "")
-    length = len(thinking_content)
+    thought_parsed = parse_thinking_content(predict_str)
+    thought = thought_parsed["thought"]
+    length = len(thought)
     result_correctness = verify_ans(predict_str, ground_truth) >= 0.8
     reward = 0.0
     lambda_val = 0.5 - (length - min_length)/(max_length - min_length)
@@ -99,8 +120,10 @@ def compute_score(predicts: List[str], ground_truths: List[str], format_weight: 
     scores = []
     thought_lengths = []
     for predict in predicts:
-        thought_content = parse_answer(predict).get("Thought", "")
-        thought_lengths.append(len(thought_content))
+        thought_parsed = parse_thinking_content(predict)
+        thought = thought_parsed["thought"]
+        length = len(thought)
+        thought_lengths.append(length)
     min_length = min(thought_lengths)
     max_length = max(thought_lengths)
     for predict, ground_truth in zip(predicts, ground_truths):
@@ -122,18 +145,27 @@ def compute_score(predicts: List[str], ground_truths: List[str], format_weight: 
 
 
 if __name__ == "__main__":
-    _str = ['''{
-  "Thought": "客户要求转人工",
+    _str = ['''<think>
+客户要求转人工
+</think>
+{
   "Action": "MANUAL_SERVICE",
   "ActionInput": {
     "forReason": "客户要求人工客服处理"
   }
-}''','''{
-  "Thought": "转人工",
+}''','''<think>
+</think>
+{
+  "Action": "MANUAL_SERVICE",
+  "ActionInput": {
+    "forReason": "客户要求人工客服处理"
+  }
+}''','''</think>
+{
   "Action": "MANUAL_SERVICE",
   "ActionInput": {
     "forReason": "客户要求人工客服处理"
   }
 }''']
-    _ground_truth = ["{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}","{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}"]
+    _ground_truth = ["{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}","{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}","{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}"]
     print(f"compute_score: {compute_score(_str, _ground_truth)}")
