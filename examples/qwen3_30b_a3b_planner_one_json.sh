@@ -6,11 +6,11 @@ export PYTHONUNBUFFERED=1
 
 MODEL_PATH=/data_nvme3n1/model/Qwen/Qwen3-30B-A3B  # replace it with your local file path
 
-ray job submit --address="http://10.242.64.07:8265" \
+ray job submit --address="http://10.242.64.12:8265" \
     --no-wait \
     -- \
     python3 -m verl.trainer.main \
-        config=examples/qwen2_5_7b_planner_config.yaml \
+        config=examples/qwen3_30b_a3b_planner_one_json.yaml \
         data.train_files=/data_nvme3n1/dataset/manual_corrected-20250311@train \
         data.val_files=/data_nvme3n1/dataset/manual_corrected-20250311@test \
         worker.actor.model.model_path=${MODEL_PATH} \
