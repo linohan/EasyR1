@@ -19,5 +19,5 @@ ray job submit --address="http://10.242.64.12:8265" \
     --no-wait \
     -- \
     python3 -m verl.trainer.main \
-        config=examples/qwen3_8b_planner_config.yaml \
+        config=examples/qwen3_8b_planner_one_json.yaml \
         worker.actor.model.model_path=${MODEL_PATH}
