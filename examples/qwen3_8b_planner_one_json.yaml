@@ -80,7 +80,7 @@ trainer:
   project_name: easy_r1
   experiment_name: qwen3_8b_planner
   logger: ["console", "wandb"]
-  nnodes: 1
+  nnodes: 2
   n_gpus_per_node: 8
   val_freq: 5  # -1 to disable
   val_before_train: true
