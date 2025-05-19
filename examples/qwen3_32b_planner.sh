@@ -13,11 +13,11 @@ get_ip() {
     echo $ip
 }
 
-MODEL_PATH=/data_nvme3n1/model/Qwen/Qwen3-8B  # replace it with your local file path
+MODEL_PATH=/data_nvme3n1/model/Qwen/Qwen3-32B/  # replace it with your local file path
 
-ray job submit --address="http://$(get_ip):8265" \
+ray job submit --address="http://10.242.64.12:8265" \
     --no-wait \
     -- \
     python3 -m verl.trainer.main \
-        config=examples/qwen3_8b_planner.yaml \
+        config=examples/qwen3_32b_planner.yaml \
         worker.actor.model.model_path=${MODEL_PATH}

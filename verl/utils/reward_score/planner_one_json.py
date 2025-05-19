@@ -121,6 +121,32 @@ def compute_score(predicts: List[str], ground_truths: List[str], format_weight: 
     return scores
 
 
+def compute_score(predicts: List[str], ground_truths: List[str], format_weight: float = 0.1) -> List[Dict[str, float]]:
+    scores = []
+    thought_lengths = []
+    for predict in predicts:
+        thought_content = parse_answer(predict).get("Thought", "")
+        thought_lengths.append(len(thought_content))
+    min_length = min(thought_lengths)
+    max_length = max(thought_lengths)
+    for predict, ground_truth in zip(predicts, ground_truths):
+        format_score = planner_format_reward(predict)
+        accuracy_score = planner_acc_reward(predict, ground_truth)
+        length_score = planner_length_reward_optimal_length(predict, 25, 0.001)
+        overall_score = 0.8 * accuracy_score + 0.1 * format_score + 0.1 * length_score
+
+        scores.append(
+            {
+                "overall": overall_score,
+                "format": format_score,
+                "length": length_score,
+                "accuracy": accuracy_score,
+            }
+        )
+
+    return scores
+
+
 if __name__ == "__main__":
     _str = ['''{
   "Thought": "客户要求转人工",
