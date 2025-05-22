@@ -81,7 +81,7 @@ trainer:
   experiment_name: qwen3_32b_planner
   logger: ["console", "wandb"]
   nnodes: 2
-  n_gpus_per_node: 6
+  n_gpus_per_node: 8
   val_freq: 5  # -1 to disable
   val_before_train: true
   val_only: false
