@@ -89,4 +89,4 @@ trainer:
   save_freq: 5  # -1 to disable
   save_limit: 3  # -1 to disable
   save_checkpoint_path: null
-  load_checkpoint_path: null
+  load_checkpoint_path: /data_nvme1n1/work/ljm/code/EasyR1/checkpoints/easy_r1/qwen3_32b_planner/global_step_5
