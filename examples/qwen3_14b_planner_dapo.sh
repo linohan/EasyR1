@@ -19,7 +19,7 @@ ray job submit --address="http://$(get_ip):8265" \
     --no-wait \
     -- \
     python3 -m verl.trainer.main \
-        config=examples/config.yaml \
+        config=examples/qwen3_14b_planner_dapo.yaml \
         data.train_files=/data_nvme3n1/dataset/manual_corrected-20250311@train \
         data.val_files=/data_nvme3n1/dataset/manual_corrected-20250311@test \
         data.format_prompt=./examples/format_prompt/planner_format.jinja \
@@ -40,10 +40,8 @@ ray job submit --address="http://$(get_ip):8265" \
         worker.actor.clip_ratio_dual=10.0 \
         worker.rollout.n=16 \
         worker.rollout.max_num_batched_tokens=22528 \
-        worker.rollout.val_override_config="{\"n\":16,\"temperature\":1.0,\"top_p\":0.7}" \
         worker.rollout.gpu_memory_utilization=0.8 \
         worker.reward.reward_function=./verl/utils/reward_score/planner.py:compute_score \
-        worker.reward.reward_function_kwargs="{\"max_response_length\":2048,\"overlong_buffer_length\":4096,\"overlong_penalty_factor\":1.0}" \
         algorithm.disable_kl=True \
         algorithm.online_filtering=True \
         algorithm.filter_key=accuracy_normalized \

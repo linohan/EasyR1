@@ -68,8 +68,9 @@ worker:
     tensor_parallel_size: 8
     disable_tqdm: false
     val_override_config:
-      temperature: 0.5
-      n: 1
+      temperature: 1.0
+      n: 16
+      top_p: 0.7
 
   ref:
     fsdp:
@@ -82,6 +83,10 @@ worker:
   reward:
     reward_type: batch
     reward_function: ./examples/reward_function/math.py:compute_score
+    reward_function_kwargs: 
+      max_response_length: 2048
+      overlong_buffer_length: 4096
+      overlong_penalty_factor: 1.0
 
 trainer:
   total_epochs: 15
