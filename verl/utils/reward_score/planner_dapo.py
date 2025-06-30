@@ -149,7 +149,7 @@ def compute_score(
         accuracy_score = planner_acc_reward(predict, ground_truth)
         length_score = planner_length_reward_kimi1_5(predict, ground_truth, min_length, max_length)
         overlong_score = soft_overlong_punishment(
-            predict, max_response_length, overlong_buffer_length
+            len(predict), max_response_length, overlong_buffer_length
         )
         overall_score = 0.8 * accuracy_score + 0.1 * format_score + 0.1 * length_score + overlong_score * overlong_penalty_factor
 
