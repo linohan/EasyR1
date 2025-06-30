@@ -120,11 +120,12 @@ class TensorBoardLogger(Logger):
 
 class WandbLogger(Logger):
     def __init__(self, config: Dict[str, Any]) -> None:
-        wandb.init(
-            project=config["trainer"]["project_name"],
-            name=config["trainer"]["experiment_name"],
-            config=config,
-        )
+        # wandb.init(
+        #     project=config["trainer"]["project_name"],
+        #     name=config["trainer"]["experiment_name"],
+        #     config=config,
+        # )
+        wandb.init(mode="offline")
 
     def log(self, data: Dict[str, Any], step: int) -> None:
         wandb.log(data=data, step=step)
