@@ -1,6 +1,6 @@
 data:
-  train_files: hiyouga/math12k@train
-  val_files: hiyouga/math12k@test
+  train_files: /data_nvme3n1/dataset/math12k@train
+  val_files: /data_nvme3n1/dataset/math12k@test
   prompt_key: problem
   answer_key: answer
   image_key: images
@@ -40,7 +40,7 @@ worker:
     padding_free: true
     ulysses_size: 1
     model:
-      model_path: Qwen/Qwen2.5-7B-Instruct
+      model_path: /data_nvme3n1/model/Qwen/QwQ-32B
       enable_gradient_checkpointing: true
       trust_remote_code: false
       freeze_vision_tower: false
@@ -65,7 +65,7 @@ worker:
     gpu_memory_utilization: 0.6
     enforce_eager: false
     enable_chunked_prefill: false
-    tensor_parallel_size: 2
+    tensor_parallel_size: 8
     disable_tqdm: false
     val_override_config:
       temperature: 0.5
