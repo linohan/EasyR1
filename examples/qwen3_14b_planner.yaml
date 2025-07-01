@@ -30,7 +30,7 @@ worker:
     micro_batch_size_per_device_for_experience: 16
     max_grad_norm: 1.0
     padding_free: true
-    ulysses_sequence_parallel_size: 1
+    ulysses_size: 1
     model:
       model_path: /data_nvme3n1/model/Qwen/Qwen3-8B
       enable_gradient_checkpointing: true
