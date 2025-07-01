@@ -167,7 +167,7 @@ def compute_score(
 
 
 if __name__ == "__main__":
-    _str = ['''<think>
+    _reward_inputs = [{"response": '''<think>
 客户要求转人工
 </think>
 {
@@ -175,19 +175,26 @@ if __name__ == "__main__":
   "ActionInput": {
     "forReason": "客户要求人工客服处理"
   }
-}''','''<think>
+}''',
+"ground_truth": "{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}"
+},
+{"response": '''<think>
 </think>
 {
   "Action": "MANUAL_SERVICE",
   "ActionInput": {
     "forReason": "客户要求人工客服处理"
   }
-}''','''</think>
+}''',
+"ground_truth": "{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}"
+},
+{"response": '''</think>
 {
   "Action": "MANUAL_SERVICE",
   "ActionInput": {
     "forReason": "客户要求人工客服处理"
   }
-}''']
-    _ground_truth = ["{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}","{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}","{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}"]
-    print(f"compute_score: {compute_score(_str, _ground_truth)}")
+}''',
+"ground_truth": "{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}"
+}]
+    print(f"compute_score: {compute_score(_reward_inputs, 2048, 4096, 1.0)}")

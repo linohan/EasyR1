@@ -3,7 +3,7 @@ from verl.utils.reward_score.planner_utils import *
 # from planner_utils import *
 import json
 import numpy as np
-from typing import Dict, List
+from typing import Dict, List, Any
 
 
 def parse_thinking_content(predict_str: str) -> dict:
@@ -116,17 +116,20 @@ def planner_length_reward_kimi1_5(predict_str: str, ground_truth: str, min_lengt
     return reward
 
 
-def compute_score(predicts: List[str], ground_truths: List[str], format_weight: float = 0.1) -> List[Dict[str, float]]:
+def compute_score(reward_inputs: List[Dict[str, Any]], format_weight: float = 0.1) -> List[Dict[str, float]]:
     scores = []
     thought_lengths = []
-    for predict in predicts:
+    for reward_input in reward_inputs:
+        predict = reward_input["response"]
         thought_parsed = parse_thinking_content(predict)
         thought = thought_parsed["thought"]
         length = len(thought)
         thought_lengths.append(length)
     min_length = min(thought_lengths)
     max_length = max(thought_lengths)
-    for predict, ground_truth in zip(predicts, ground_truths):
+    for reward_input in reward_inputs:
+        predict = reward_input["response"]
+        ground_truth = reward_input["ground_truth"]
         format_score = planner_format_reward(predict)
         accuracy_score = planner_acc_reward(predict, ground_truth)
         length_score = planner_length_reward_kimi1_5(predict, ground_truth, min_length, max_length)
@@ -145,7 +148,7 @@ def compute_score(predicts: List[str], ground_truths: List[str], format_weight: 
 
 
 if __name__ == "__main__":
-    _str = ['''<think>
+    _reward_inputs = [{"response": '''<think>
 客户要求转人工
 </think>
 {
@@ -153,19 +156,26 @@ if __name__ == "__main__":
   "ActionInput": {
     "forReason": "客户要求人工客服处理"
   }
-}''','''<think>
+}''',
+"ground_truth": "{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}"
+},
+{"response": '''<think>
 </think>
 {
   "Action": "MANUAL_SERVICE",
   "ActionInput": {
     "forReason": "客户要求人工客服处理"
   }
-}''','''</think>
+}''',
+"ground_truth": "{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}"
+},
+{"response": '''</think>
 {
   "Action": "MANUAL_SERVICE",
   "ActionInput": {
     "forReason": "客户要求人工客服处理"
   }
-}''']
-    _ground_truth = ["{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}","{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}","{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}"]
-    print(f"compute_score: {compute_score(_str, _ground_truth)}")
+}''',
+"ground_truth": "{\"Action\": \"MANUAL_SERVICE\", \"ActionInput\": {}}"
+}]
+    print(f"compute_score: {compute_score(_reward_inputs)}")
